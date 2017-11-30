@@ -6,6 +6,8 @@ import org.apache.shiro.mgt.RememberMeManager;
 import org.apache.shiro.mgt.SecurityManager;
 import org.apache.shiro.realm.Realm;
 import org.apache.shiro.session.mgt.SessionManager;
+import org.apache.shiro.spring.LifecycleBeanPostProcessor;
+import org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor;
 import org.apache.shiro.spring.web.ShiroFilterFactoryBean;
 import org.apache.shiro.spring.web.config.ShiroWebConfiguration;
 import org.apache.shiro.web.mgt.CookieRememberMeManager;
@@ -59,6 +61,18 @@ public class ShiroConfig {
         DefaultWebSessionManager defaultSessionManager=new DefaultWebSessionManager();
         defaultSessionManager.setSessionDAO(sessionDAO);
         return defaultSessionManager;
+    }
+
+    @Bean("lifecycleBeanPostProcessor")
+    public LifecycleBeanPostProcessor getLifecycleBeanPostProcessor() {
+        return new LifecycleBeanPostProcessor();
+    }
+
+    @Bean
+    public AuthorizationAttributeSourceAdvisor getAuthorizationAttributeSourceAdvisor(@Qualifier("shiroSecurityManager")SecurityManager securityManager) {
+        AuthorizationAttributeSourceAdvisor aasa = new AuthorizationAttributeSourceAdvisor();
+        aasa.setSecurityManager(securityManager);
+        return new AuthorizationAttributeSourceAdvisor();
     }
 
 
