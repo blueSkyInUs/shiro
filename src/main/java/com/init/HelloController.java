@@ -52,9 +52,9 @@ public class HelloController {
     }
 
     @RequestMapping(value = "/login", method = RequestMethod.POST)
-    String loginFromPost(@RequestParam String username, @RequestParam String password) {
+    String loginFromPost(@RequestParam String username, @RequestParam String password,@RequestParam Boolean rememberMe) {
         Subject subject = SecurityUtils.getSubject();
-        UsernamePasswordToken token = new UsernamePasswordToken(username, password);
+        UsernamePasswordToken token = new UsernamePasswordToken(username, password,rememberMe);
         subject.login(token);
         return "redirect:/read";
     }

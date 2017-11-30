@@ -44,9 +44,8 @@ public class MyJdbcRealm extends JdbcRealm {
         return  userMapper.obtainUsers(username)
                 .stream()
                 .findFirst()
-                .map((user) -> new SimpleAuthenticationInfo(user.getUsername(), user.getPassword(), getName())).orElse(null);
-        //  .orElseThrow(() ->{throw new UnknownAccountException("No account found for user [" + username + "]");});   抛出异常 编译无法通过 666
-
+                .map((user) -> new SimpleAuthenticationInfo(user.getUsername(), user.getPassword(), getName()))
+               .orElseThrow(UnknownAccountException::new);
     }
 
     protected AuthorizationInfo doGetAuthorizationInfo(PrincipalCollection principals) {
@@ -59,11 +58,13 @@ public class MyJdbcRealm extends JdbcRealm {
 
         Set<String> roles = userRoleMapper.obtainRoles(username)
                 .stream()
-                .map(Roles::getRoleName).collect(Collectors.toSet());
+                .map(Roles::getRoleName)
+                .collect(Collectors.toSet());
 
         Set<String> permissions = roles.stream()
                 .flatMap(roleName -> permissionsMapper.obtainPermissions(roleName).stream())
-                .map(Permissions::getPermission).collect(Collectors.toSet());
+                .map(Permissions::getPermission)
+                .collect(Collectors.toSet());
 
 
         SimpleAuthorizationInfo info = new SimpleAuthorizationInfo(roles);
