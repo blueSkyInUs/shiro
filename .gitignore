@@ -1,0 +1,7 @@
+#idea自带的文件夹
+.idea
+#编译文件夹
+target/
+#编译文件
+*.class
+*.iml
