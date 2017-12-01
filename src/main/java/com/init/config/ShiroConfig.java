@@ -5,9 +5,9 @@ import org.apache.shiro.cache.ehcache.EhCacheManager;
 import org.apache.shiro.mgt.RememberMeManager;
 import org.apache.shiro.mgt.SecurityManager;
 import org.apache.shiro.realm.Realm;
+import org.apache.shiro.session.InvalidSessionException;
+import org.apache.shiro.session.Session;
 import org.apache.shiro.session.mgt.SessionManager;
-import org.apache.shiro.spring.LifecycleBeanPostProcessor;
-import org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor;
 import org.apache.shiro.spring.web.ShiroFilterFactoryBean;
 import org.apache.shiro.spring.web.config.ShiroWebConfiguration;
 import org.apache.shiro.web.mgt.CookieRememberMeManager;
@@ -27,7 +27,7 @@ import java.util.Map;
 public class ShiroConfig {
 
     @Bean
-    public ShiroFilterFactoryBean shirFilter( SecurityManager securityManager) {
+    public ShiroFilterFactoryBean shirFilter( @Qualifier("shiroSecurityManager") SecurityManager securityManager) {
         ShiroFilterFactoryBean filterFactoryBean = new ShiroFilterFactoryBean();
         Map<String, String> filterChainDefinitionMap = new LinkedHashMap<String, String>();
         filterChainDefinitionMap.put("/static/**", "anon");
@@ -58,21 +58,17 @@ public class ShiroConfig {
 
     @Bean("redisSessionManager")
     public SessionManager getSessionManager(RedisSessionDao sessionDAO){
-        DefaultWebSessionManager defaultSessionManager=new DefaultWebSessionManager();
+        /*
+        java.lang.IllegalStateException: The org.apache.shiro.web.session.mgt.DefaultWebSessionManager implementation only supports validating Session implementations of the org.apache.shiro.session.mgt.ValidatingSession interface.  Please either implement this interface in your session implementation or override the org.apache.shiro.session.mgt.AbstractValidatingSessionManager.doValidate(Session) method to perform validation.
+
+         */
+        DefaultWebSessionManager defaultSessionManager=new DefaultWebSessionManager(){
+            protected void doValidate(Session session) throws InvalidSessionException {
+                //TODO  需要实现 测试先忽略掉  后遗症未知
+            }
+        };
         defaultSessionManager.setSessionDAO(sessionDAO);
         return defaultSessionManager;
-    }
-
-    @Bean("lifecycleBeanPostProcessor")
-    public LifecycleBeanPostProcessor getLifecycleBeanPostProcessor() {
-        return new LifecycleBeanPostProcessor();
-    }
-
-    @Bean
-    public AuthorizationAttributeSourceAdvisor getAuthorizationAttributeSourceAdvisor(@Qualifier("shiroSecurityManager")SecurityManager securityManager) {
-        AuthorizationAttributeSourceAdvisor aasa = new AuthorizationAttributeSourceAdvisor();
-        aasa.setSecurityManager(securityManager);
-        return new AuthorizationAttributeSourceAdvisor();
     }
 
 

@@ -1,6 +1,7 @@
 package com.init.redis;
 
 import com.alibaba.fastjson.JSONObject;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.shiro.session.Session;
 import org.apache.shiro.session.UnknownSessionException;
 import org.apache.shiro.session.mgt.eis.AbstractSessionDAO;
@@ -9,7 +10,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.io.Serializable;
+import java.io.*;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
@@ -17,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 @ConfigurationProperties(prefix = "session.redis")
+@Slf4j
 public class RedisSessionDao extends AbstractSessionDAO {
 
     private long sessionExpireSecond;
@@ -29,8 +32,26 @@ public class RedisSessionDao extends AbstractSessionDAO {
 
     @Override
     public void update(Session session) throws UnknownSessionException {
-        redisTemplate.opsForValue().set(getSessionKeyInRedis(session), JSONObject.toJSONString(session));
-        redisTemplate.expire(getSessionKeyInRedis(session), sessionExpireSecond, TimeUnit.SECONDS);
+
+        ByteArrayOutputStream byteArrayOutputStream=null;
+        ObjectOutputStream objectOutputStream=null;
+        try {
+             byteArrayOutputStream=new ByteArrayOutputStream();
+             objectOutputStream=new ObjectOutputStream(byteArrayOutputStream);
+            objectOutputStream.writeObject(session);
+            redisTemplate.opsForValue().set(getSessionKeyInRedis(session), Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray()));
+            redisTemplate.expire(getSessionKeyInRedis(session), sessionExpireSecond, TimeUnit.SECONDS);
+        } catch (IOException e) {
+            log.error(e.getMessage(),e);
+        } finally {
+            try {
+                objectOutputStream.close();
+                byteArrayOutputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
     }
 
     @Override
@@ -56,8 +77,31 @@ public class RedisSessionDao extends AbstractSessionDAO {
     protected Session doReadSession(Serializable sessionId) {
         String result = redisTemplate.opsForValue().get(SESSION_CACHE_PREFIX + sessionId);
         if (Objects.isNull(result)) return null;
+
+        ByteArrayInputStream byteArrayInputStream=null;
+        ObjectInputStream objectInputStream=null;
+        try {
+            byteArrayInputStream=new ByteArrayInputStream(Base64.getDecoder().decode(result));
+            objectInputStream=new ObjectInputStream(byteArrayInputStream);
+            return  (Session)objectInputStream.readObject();
+        } catch (Exception e) {
+            log.error(e.getMessage(),e);
+        } finally {
+            try {
+                objectInputStream.close();
+                byteArrayInputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+
         return JSONObject.parseObject(result, Session.class);
     }
+
+
+
 
     private String getSessionKeyInRedis(Session session) {
         return SESSION_CACHE_PREFIX + session.getId();
