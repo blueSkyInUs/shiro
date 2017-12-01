@@ -89,7 +89,7 @@ public class RedisSessionDao extends AbstractSessionDAO {
 
 
     @Override
-    protected Session doReadSession(Serializable sessionId) {
+    protected Session doReadSession(Serializable sessionId) {  //规避掉 多次调用此接口 一直去连接redis的问题  加一级本地缓存
 
         String key=SESSION_CACHE_PREFIX + sessionId;
         String sessionValue=null;
