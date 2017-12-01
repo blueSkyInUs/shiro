@@ -1,7 +1,8 @@
 package com.init.redis;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.shiro.cache.Cache;
+import org.apache.shiro.cache.ehcache.EhCacheManager;
 import org.apache.shiro.session.Session;
 import org.apache.shiro.session.UnknownSessionException;
 import org.apache.shiro.session.mgt.eis.AbstractSessionDAO;
@@ -29,18 +30,27 @@ public class RedisSessionDao extends AbstractSessionDAO {
 
     private static final String SESSION_CACHE_PREFIX = "SESSION_CACHE_";
 
+    private static final String SESSION_EHCACHE_NAMESPACE="SESSION_CACHE";
+
+    @Autowired
+    private EhCacheManager ehCacheManager;
+
 
     @Override
     public void update(Session session) throws UnknownSessionException {
 
+        String key=getSessionKeyInRedis(session);
         ByteArrayOutputStream byteArrayOutputStream=null;
         ObjectOutputStream objectOutputStream=null;
         try {
              byteArrayOutputStream=new ByteArrayOutputStream();
              objectOutputStream=new ObjectOutputStream(byteArrayOutputStream);
             objectOutputStream.writeObject(session);
-            redisTemplate.opsForValue().set(getSessionKeyInRedis(session), Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray()));
-            redisTemplate.expire(getSessionKeyInRedis(session), sessionExpireSecond, TimeUnit.SECONDS);
+            String result= Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray());
+            redisTemplate.opsForValue().set(key,result);
+            redisTemplate.expire(key, sessionExpireSecond, TimeUnit.SECONDS);
+            Cache cache=ehCacheManager.getCache(SESSION_EHCACHE_NAMESPACE);
+            cache.put(key,result);
         } catch (IOException e) {
             log.error(e.getMessage(),e);
         } finally {
@@ -56,6 +66,10 @@ public class RedisSessionDao extends AbstractSessionDAO {
 
     @Override
     public void delete(Session session) {
+        String key=getSessionKeyInRedis(session);
+        Cache cache=ehCacheManager.getCache(SESSION_EHCACHE_NAMESPACE);
+        cache.remove(key);
+
         redisTemplate.delete(getSessionKeyInRedis(session));
     }
 
@@ -73,15 +87,24 @@ public class RedisSessionDao extends AbstractSessionDAO {
         return sessionId;
     }
 
+
     @Override
     protected Session doReadSession(Serializable sessionId) {
-        String result = redisTemplate.opsForValue().get(SESSION_CACHE_PREFIX + sessionId);
-        if (Objects.isNull(result)) return null;
 
+        String key=SESSION_CACHE_PREFIX + sessionId;
+        String sessionValue=null;
+        Cache cache=ehCacheManager.getCache(SESSION_EHCACHE_NAMESPACE);
+        if (  (sessionValue=(String)cache.get(key))==null ){
+            log.info("get from redis...");
+            sessionValue = redisTemplate.opsForValue().get(SESSION_CACHE_PREFIX + sessionId);
+        }
+        if (Objects.isNull(sessionValue)) return null;
+
+        cache.put(key,sessionValue);
         ByteArrayInputStream byteArrayInputStream=null;
         ObjectInputStream objectInputStream=null;
         try {
-            byteArrayInputStream=new ByteArrayInputStream(Base64.getDecoder().decode(result));
+            byteArrayInputStream=new ByteArrayInputStream(Base64.getDecoder().decode(sessionValue));
             objectInputStream=new ObjectInputStream(byteArrayInputStream);
             return  (Session)objectInputStream.readObject();
         } catch (Exception e) {
@@ -95,9 +118,7 @@ public class RedisSessionDao extends AbstractSessionDAO {
             }
 
         }
-
-
-        return JSONObject.parseObject(result, Session.class);
+        return null;
     }
 
 

@@ -67,6 +67,7 @@ public class ShiroConfig {
                 //TODO  需要实现 测试先忽略掉  后遗症未知
             }
         };
+        defaultSessionManager.setSessionIdUrlRewritingEnabled(false); //禁止url重写 将sessionid 显示在url中
         defaultSessionManager.setSessionDAO(sessionDAO);
         return defaultSessionManager;
     }
