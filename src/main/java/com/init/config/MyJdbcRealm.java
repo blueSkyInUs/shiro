@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+
 @Slf4j
 @Component
 public class MyJdbcRealm extends JdbcRealm {
@@ -31,6 +32,7 @@ public class MyJdbcRealm extends JdbcRealm {
     @Autowired
     private PermissionsMapper permissionsMapper;
 
+    @Override
     protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) throws AuthenticationException {
 
         UsernamePasswordToken upToken = (UsernamePasswordToken) token;
@@ -48,6 +50,8 @@ public class MyJdbcRealm extends JdbcRealm {
                .orElseThrow(UnknownAccountException::new);
     }
 
+
+    @Override
     protected AuthorizationInfo doGetAuthorizationInfo(PrincipalCollection principals) {
 
         //null usernames are invalid
